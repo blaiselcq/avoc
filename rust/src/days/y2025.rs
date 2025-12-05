@@ -4,6 +4,7 @@ pub mod day_01;
 pub mod day_02;
 pub mod day_03;
 pub mod day_04;
+pub mod day_05;
 
 pub fn get_days() -> Vec<Day> {
     vec![
@@ -11,5 +12,6 @@ pub fn get_days() -> Vec<Day> {
         get_day!(2, day_02),
         get_day!(3, day_03),
         get_day!(4, day_04),
+        get_day!(5, day_05),
     ]
 }
