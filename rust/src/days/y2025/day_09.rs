@@ -38,7 +38,9 @@ fn is_inside(point: &Point, multiline: &[Point]) -> bool {
             return true;
         }
 
-        if same_y_range && !is_horizontal {
+        // One of the comparisons must be strict to handle the case of two
+        // vertical lines joining at the same point.
+        if a.y.min(b.y) < point.y && a.y.max(b.y) >= point.y && !is_horizontal {
             wn += 1;
         }
     }
@@ -68,7 +70,7 @@ fn is_totally_inside(point_a: &Point, point_b: &Point, multiline: &[Point]) -> b
 
     perimeter
         .iter()
-        .all(|l| l.into_iter().all(|p| is_inside(&p, multiline)))
+        .all(|l| l.into_iter().par_bridge().all(|p| is_inside(&p, multiline)))
 }
 
 pub fn puzzle_1(input: &str) -> String {
@@ -88,28 +90,22 @@ pub fn puzzle_2(input: &str) -> String {
 
     let perimeter = {
         let mut res = input.clone();
-        res.push(input.first().unwrap().clone());
+        res.push(*input.first().unwrap());
         res
     };
 
-    let mut i = 0;
-    let size = input.len() * input.len();
     let res = input
         .iter()
         .flat_map(|a| input.iter().map(|b| ((*a, *b), area(a, b))))
-        .inspect(|_| {
-            println!("{}/{}", i, size);
-            i += 1;
-        })
-        .par_bridge()
-        .filter_map(
-            |((a, b), area)| match is_totally_inside(&a, &b, &perimeter) {
-                true => Some(area),
-                false => None,
-            },
-        )
-        .max()
-        .unwrap();
+        .fold(0, |acc, ((a, b), area)| {
+            if area <= acc {
+                return acc;
+            }
+            match is_totally_inside(&a, &b, &perimeter) {
+                true => area,
+                false => acc,
+            }
+        });
 
     res.to_string()
 }
@@ -130,6 +126,30 @@ mod tests {
 
     #[test]
     fn test_is_inside() {
+        let input = load_input("0,0\n12,0\n12,4\n4,4\n4,8\n8,8\n8,4\n12,4\n12,12\n0,12");
+        let perimeter = {
+            let mut res = input.clone();
+            res.push(input.first().unwrap().clone());
+            res
+        };
+
+        assert!(is_inside(&point2!(1, 1), &perimeter));
+        assert!(is_inside(&point2!(3, 5), &perimeter));
+        assert!(is_inside(&point2!(4, 5), &perimeter));
+        assert!(!is_inside(&point2!(5, 5), &perimeter));
+        assert!(is_inside(&point2!(8, 5), &perimeter));
+        assert!(is_inside(&point2!(9, 5), &perimeter));
+        assert!(is_inside(&point2!(8, 4), &perimeter));
+        assert!(is_inside(&point2!(4, 4), &perimeter));
+        assert!(is_inside(&point2!(12, 4), &perimeter));
+        assert!(is_inside(&point2!(9, 4), &perimeter));
+        assert!(is_inside(&point2!(1, 4), &perimeter));
+        assert!(is_totally_inside(
+            &point2!(0, 0),
+            &point2!(12, 4),
+            &perimeter
+        ));
+
         let input = load_input(INPUT);
 
         let perimeter = {
@@ -156,6 +176,11 @@ mod tests {
         assert!(is_totally_inside(
             &point2!(9, 5),
             &point2!(2, 3),
+            &perimeter
+        ));
+        assert!(is_totally_inside(
+            &point2!(7, 3),
+            &point2!(11, 1),
             &perimeter
         ));
         assert!(is_totally_inside(
