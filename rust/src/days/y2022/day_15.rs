@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, ops::RangeInclusive};
 
 use itertools::Itertools;
 
-use crate::structs::geometry::Point2;
+use crate::utils::geometry::Point2;
 
 type Point = Point2<i32>;
 

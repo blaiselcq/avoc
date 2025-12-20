@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::structs::geometry::{Line2, Point2};
+use crate::utils::geometry::{Line2, Point2};
 
 type Point = Point2<i16>;
 type Line = Line2<i16>;

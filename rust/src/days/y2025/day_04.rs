@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use crate::structs::geometry::{point2, Point2};
+use crate::utils::geometry::{point2, Point2};
 
 type Point = Point2<i16>;
 

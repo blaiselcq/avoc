@@ -3,7 +3,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
 };
 
-use crate::structs::geometry::Point2;
+use crate::utils::geometry::Point2;
 
 type Point = Point2<u16>;
 

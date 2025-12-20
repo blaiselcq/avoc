@@ -1,7 +1,7 @@
 use num::Integer;
 use rayon::prelude::*;
 
-use crate::structs::geometry::{point2, Line2, Point2};
+use crate::utils::geometry::{point2, Line2, Point2};
 
 type Point = Point2<i64>;
 type Line = Line2<i64>;

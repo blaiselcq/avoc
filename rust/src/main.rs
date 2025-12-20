@@ -9,7 +9,6 @@ use days::get_days;
 use utils::Day;
 
 mod days;
-mod structs;
 mod utils;
 
 fn execute(year: u16, day: &Day, puzzle_number: u8, input: &String) {

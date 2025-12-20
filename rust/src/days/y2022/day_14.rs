@@ -5,7 +5,7 @@ use nom::{
     sequence::separated_pair,
 };
 
-use crate::structs::geometry::Point2;
+use crate::utils::geometry::Point2;
 
 type Point = Point2<usize>;
 
