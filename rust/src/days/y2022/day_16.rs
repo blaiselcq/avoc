@@ -3,8 +3,6 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use self::parser::parse_input;
-
 type ValveName = (char, char);
 
 pub(crate) struct InputData {
@@ -73,7 +71,6 @@ impl NodeContainer {
     }
 
     fn pop(&mut self) -> Option<Node> {
-        // dbg!(self.nodes.len());
         self.nodes.pop()
     }
 }
@@ -88,69 +85,48 @@ impl Hash for Node {
     }
 }
 
-mod parser {
+fn parse_valve_name(input: &str) -> ValveName {
+    let mut input = input.chars();
+    (input.next().unwrap(), input.next().unwrap())
+}
 
+fn parse_input(input: &str) -> InputData {
     // A line will look like that:
     //   Valve DD has flow rate=20; tunnels lead to valves CC, AA, EE
+    let parsed = input.lines().map(|line| {
+        let (valve_line, tunnel_line) = line.split_once("; ").unwrap();
+        let (valve_str, valve_line) = valve_line
+            .strip_prefix("Valve ")
+            .unwrap()
+            .split_once(' ')
+            .unwrap();
+        let valve = parse_valve_name(valve_str);
+        let flow_rate = valve_line.split_once('=').unwrap().1.parse().unwrap();
 
-    use nom::{
-        branch::alt,
-        bytes::complete::tag,
-        character::complete::{self, newline},
-        character::streaming::anychar,
-        multi::separated_list1,
-        sequence::{pair, preceded, separated_pair, tuple},
-        IResult,
-    };
-
-    use super::{InputData, ValveName};
-
-    type Valve = (u16, Vec<ValveName>);
-
-    fn parse_valve_name(input: &str) -> IResult<&str, ValveName> {
-        let (input, valve_name) = pair(anychar, anychar)(input)?;
-
-        Ok((input, valve_name))
-    }
-
-    fn parse_line(input: &str) -> IResult<&str, (ValveName, Valve)> {
-        let (input, ((_, name, _, flow_rate), paths)) = separated_pair(
-            tuple((
-                tag("Valve "),
-                parse_valve_name,
-                tag(" has flow rate="),
-                complete::u16,
-            )),
-            tag(";"),
-            preceded(
-                alt((
-                    tag(" tunnels lead to valves "),
-                    tag(" tunnel leads to valve "),
-                )),
-                separated_list1(tag(", "), parse_valve_name),
-            ),
-        )(input)?;
-
-        let valve = (flow_rate, paths);
-        Ok((input, (name, valve)))
-    }
-
-    pub(crate) fn parse_input(input: &str) -> InputData {
-        let (_, parsed) = separated_list1(newline, parse_line)(input).unwrap();
-
-        let flow_rate = parsed
-            .clone()
-            .into_iter()
-            .map(|(name, (flow_rate, _))| (name, flow_rate))
+        let tunnels = tunnel_line
+            .split_once("to ")
+            .unwrap()
+            .1
+            .split_once(' ')
+            .unwrap()
+            .1
+            .split(' ')
+            .map(|v| parse_valve_name(v))
             .collect();
 
-        let paths = parsed
-            .into_iter()
-            .map(|(name, (flow_rate, paths))| (name, (paths, flow_rate)))
-            .collect();
+        (valve, (flow_rate, tunnels))
+    });
 
-        InputData { paths, flow_rate }
-    }
+    let flow_rate = parsed
+        .clone()
+        .map(|(name, (flow_rate, _))| (name, flow_rate))
+        .collect();
+
+    let paths = parsed
+        .map(|(name, (flow_rate, paths))| (name, (paths, flow_rate)))
+        .collect();
+
+    InputData { paths, flow_rate }
 }
 
 fn get_released_pressure(node: &Node, input_data: &InputData) -> u16 {

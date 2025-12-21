@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, ops::RangeInclusive};
 
-use crate::utils::geometry::Point2;
+use crate::utils::geometry::{point2, Point2};
 
 type Point = Point2<i32>;
 
@@ -17,58 +17,33 @@ enum MapState {
     Sensor,
 }
 
-mod parser {
-    use std::collections::BTreeMap;
+fn parse_coord(input: &str) -> Point {
+    let (x, y) = input.split_once(',').unwrap();
+    point2!(
+        x.trim().strip_prefix("x=").unwrap().parse().unwrap(),
+        y.trim().strip_prefix("y=").unwrap().parse().unwrap()
+    )
+}
 
-    use nom::{
-        bytes::complete::tag,
-        character::complete::{self, line_ending},
-        multi::separated_list1,
-        sequence::{preceded, separated_pair},
-        IResult,
-    };
+fn parse_input(input: &str) -> BTreeMap<Point, Sensor> {
+    input
+        .lines()
+        .map(|l| {
+            let (sensor_line, beacon_line) = l.split_once(':').unwrap();
+            let sensor = parse_coord(sensor_line.strip_prefix("Sensor at ").unwrap());
+            let closest_beacon =
+                parse_coord(beacon_line.strip_prefix(" closest beacon is at ").unwrap());
+            let distance = sensor.distance_1(&closest_beacon);
 
-    use super::{Point, Sensor};
-
-    fn parse_coord(input: &str) -> IResult<&str, Point> {
-        let (input, coord) = separated_pair(
-            preceded(tag("x="), complete::i32),
-            tag(", "),
-            preceded(tag("y="), complete::i32),
-        )(input)?;
-        let coord = Point {
-            x: coord.0,
-            y: coord.1,
-        };
-
-        Ok((input, coord))
-    }
-
-    fn parse_line(input: &str) -> IResult<&str, (Point, Sensor)> {
-        let (input, (sensor, closest_beacon)) = separated_pair(
-            preceded(tag("Sensor at "), parse_coord),
-            tag(": "),
-            preceded(tag("closest beacon is at "), parse_coord),
-        )(input)?;
-
-        let distance = sensor.distance_1(&closest_beacon);
-        Ok((
-            input,
             (
                 sensor,
                 Sensor {
                     closest_beacon,
                     distance,
                 },
-            ),
-        ))
-    }
-
-    pub(crate) fn parse_input(input: &str) -> BTreeMap<Point, Sensor> {
-        let (_, result) = separated_list1(line_ending, parse_line)(input).unwrap();
-
-        result.into_iter().collect()
-    }
+            )
+        })
+        .collect()
 }
 
 fn get_footprint(map: &BTreeMap<Point, Sensor>) -> (RangeInclusive<i32>, RangeInclusive<i32>) {
@@ -172,7 +147,7 @@ fn get_first_empty_position(subgrid_size: i32, map: &BTreeMap<Point, Sensor>) ->
 pub fn puzzle_1(input: &str) -> String {
     let row_number = 2_000_000;
 
-    let map = parser::parse_input(input);
+    let map = parse_input(input);
     let footprint = get_footprint(&map);
     get_row(row_number, &map, footprint)
         .iter()
@@ -184,7 +159,7 @@ pub fn puzzle_1(input: &str) -> String {
 pub fn puzzle_2(input: &str) -> String {
     let max_coord = 4_000_000;
 
-    let map = parser::parse_input(input);
+    let map = parse_input(input);
     let first_empty_position = get_first_empty_position(max_coord, &map).unwrap();
 
     let value = first_empty_position.x as i64 * max_coord as i64 + first_empty_position.y as i64;
@@ -214,7 +189,7 @@ Sensor at x=20, y=1: closest beacon is at x=15, y=3";
     fn test_puzzle_1() {
         let row_number = 10;
 
-        let map = parser::parse_input(INPUT);
+        let map = parse_input(INPUT);
         let footprint = get_footprint(&map);
         let result = get_row(row_number, &map, footprint)
             .iter()
@@ -228,7 +203,7 @@ Sensor at x=20, y=1: closest beacon is at x=15, y=3";
     fn test_puzzle_2() {
         let max_coord = 20;
 
-        let map = parser::parse_input(INPUT);
+        let map = parse_input(INPUT);
         let first_empty_position = get_first_empty_position(max_coord, &map).unwrap();
 
         let value = first_empty_position.x as i64 * 4_000_000i64 + first_empty_position.y as i64;

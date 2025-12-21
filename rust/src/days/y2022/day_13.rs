@@ -1,15 +1,5 @@
 use std::collections::BTreeSet;
 
-use nom::{
-    branch::alt,
-    bytes::complete::tag,
-    character::complete::{self, newline},
-    combinator::map,
-    multi::{separated_list0, separated_list1},
-    sequence::{delimited, pair, separated_pair},
-    IResult,
-};
-
 #[derive(Debug, PartialEq, Eq, Clone)]
 enum ListElement {
     Number(u8),
@@ -37,27 +27,65 @@ impl PartialOrd for ListElement {
     }
 }
 
-fn parse_input_list(input: &str) -> IResult<&str, ListElement> {
-    let (input, result) = delimited(
-        tag("["),
-        separated_list0(
-            tag(","),
-            alt((map(complete::u8, ListElement::Number), parse_input_list)),
-        ),
-        tag("]"),
-    )(input)?;
+fn parse_input_list(input: &str) -> Option<ListElement> {
+    if input.is_empty() {
+        return None;
+    }
 
-    Ok((input, ListElement::List(result)))
+    if !(input.starts_with('[') && input.ends_with(']')) {
+        return Some(ListElement::Number(input.parse().unwrap()));
+    }
+
+    let slice = &input[1..input.len() - 1];
+
+    let mut res = vec![];
+    let mut it = slice.chars();
+    let mut buf = String::new();
+    let mut index = 0;
+    loop {
+        match it.next() {
+            Some(c) => match c {
+                ',' => {
+                    if index == 0 {
+                        if let Some(parsed) = parse_input_list(&buf) {
+                            res.push(parsed);
+                        }
+                        buf.clear();
+                    } else {
+                        buf.push(c);
+                    }
+                }
+                '[' => {
+                    index += 1;
+                    buf.push(c);
+                }
+                ']' => {
+                    index -= 1;
+                    buf.push(c);
+                }
+                _ => buf.push(c),
+            },
+            None => break,
+        }
+    }
+
+    if let Some(parsed) = parse_input_list(&buf) {
+        res.push(parsed);
+    }
+    Some(ListElement::List(res))
 }
 
 fn parse_input(input: &str) -> Vec<(ListElement, ListElement)> {
-    let (_, result) = separated_list1(
-        pair(newline, newline),
-        separated_pair(parse_input_list, newline, parse_input_list),
-    )(input)
-    .unwrap();
-
-    result
+    input
+        .split("\n\n")
+        .map(|l| {
+            let (a, b) = l.split_once('\n').unwrap();
+            (
+                parse_input_list(a.trim()).unwrap(),
+                parse_input_list(b.trim()).unwrap(),
+            )
+        })
+        .collect()
 }
 
 pub fn puzzle_1(input: &str) -> String {
@@ -79,17 +107,17 @@ pub fn puzzle_1(input: &str) -> String {
 pub fn puzzle_2(input: &str) -> String {
     let input = parse_input(input);
     let mut packets = input
-        .iter()
+        .into_iter()
         .flat_map(|(a, b)| vec![a, b])
         .collect::<BTreeSet<_>>();
-    let (_, divider_1) = parse_input_list("[[2]]").unwrap();
-    let (_, divider_2) = parse_input_list("[[6]]").unwrap();
+    let divider_1 = parse_input_list("[[2]]").unwrap();
+    let divider_2 = parse_input_list("[[6]]").unwrap();
 
-    packets.insert(&divider_1);
-    packets.insert(&divider_2);
+    packets.insert(divider_1.clone());
+    packets.insert(divider_2.clone());
 
-    let index_1 = packets.iter().position(|&el| el == &divider_1).unwrap() + 1;
-    let index_2 = packets.iter().position(|&el| el == &divider_2).unwrap() + 1;
+    let index_1 = packets.iter().position(|el| *el == divider_1).unwrap() + 1;
+    let index_2 = packets.iter().position(|el| *el == divider_2).unwrap() + 1;
 
     (index_1 * index_2).to_string()
 }
@@ -127,15 +155,19 @@ mod tests {
         use ListElement::*;
 
         let input = "[[4,4],4,4]";
-        let (_, result) = parse_input_list(input).unwrap();
+        let result = parse_input_list(input);
         assert_eq!(
             result,
-            List(vec![List(vec![Number(4), Number(4)]), Number(4), Number(4)])
+            Some(List(vec![
+                List(vec![Number(4), Number(4)]),
+                Number(4),
+                Number(4)
+            ]))
         );
 
         let input = "[]";
-        let (_, result) = parse_input_list(input).unwrap();
-        assert_eq!(result, List(vec![]));
+        let result = parse_input_list(input);
+        assert_eq!(result, Some(List(vec![])));
     }
 
     #[test]

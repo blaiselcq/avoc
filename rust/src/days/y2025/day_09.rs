@@ -1,4 +1,3 @@
-use num::Integer;
 use rayon::prelude::*;
 
 use crate::utils::geometry::{point2, Line2, Point2};
@@ -45,7 +44,7 @@ fn is_inside(point: &Point, multiline: &[Point]) -> bool {
         }
     }
 
-    wn.is_odd()
+    wn % 2 == 1
 }
 
 fn is_totally_inside(point_a: &Point, point_b: &Point, multiline: &[Point]) -> bool {

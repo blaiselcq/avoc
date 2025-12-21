@@ -1,10 +1,5 @@
 use std::ops::RangeInclusive;
 
-use nom::{
-    bytes::complete::tag, character::complete::newline, combinator::map, multi::separated_list1,
-    sequence::separated_pair,
-};
-
 use crate::utils::geometry::Point2;
 
 type Point = Point2<usize>;
@@ -35,20 +30,16 @@ fn get_range(start: usize, finish: usize) -> RangeInclusive<usize> {
 }
 
 fn parse_input(input: &str) -> Map {
-    let coord_parser = map(
-        separated_pair(
-            nom::character::complete::u16::<&str, ()>,
-            tag(","),
-            nom::character::complete::u16::<&str, ()>,
-        ),
-        |(x, y)| (x as usize, y as usize),
-    );
+    let result = input.lines().map(|l| {
+        l.split(" -> ")
+            .map(|c| {
+                let (a, b) = c.split_once(',').unwrap();
+                (a.parse::<usize>().unwrap(), b.parse::<usize>().unwrap())
+            })
+            .collect::<Vec<_>>()
+    });
 
-    let mut parser = separated_list1(newline, separated_list1(tag(" -> "), coord_parser));
-
-    let (_, result) = parser(input).unwrap();
-
-    let max_y = result.iter().flatten().max_by_key(|c| c.1).unwrap().1 + 1;
+    let max_y = result.clone().flatten().max_by_key(|c| c.1).unwrap().1 + 1;
 
     let bottom_height = max_y + 1;
     let offset_x = 500 - bottom_height;

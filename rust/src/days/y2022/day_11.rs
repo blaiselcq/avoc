@@ -35,15 +35,6 @@ mod parser {
     use core::panic;
     use std::num::ParseIntError;
 
-    use nom::{
-        branch::alt,
-        bytes::complete::{tag, take_until},
-        character::complete::{self, anychar, digit1, multispace0, multispace1, newline},
-        multi::separated_list0,
-        sequence::{delimited, preceded, tuple},
-        IResult,
-    };
-
     pub use super::types::Monkey;
 
     #[derive(Debug, Clone, Copy)]
@@ -62,28 +53,19 @@ mod parser {
         }
     }
 
-    fn parse_operation(input: &str) -> IResult<&str, Box<super::types::Operation>> {
-        let (input, _) = tag("new = ")(input)?;
-        let (input, operand_1_str) = alt((tag("old"), digit1))(input)?;
-        let (input, operator_str) = delimited(multispace0, anychar, multispace0)(input)?;
-        let (input, operand_2_str) = alt((tag("old"), digit1))(input)?;
+    fn parse_operation(input: &str) -> Box<super::types::Operation> {
+        let input = input.strip_prefix(" new = ").unwrap();
+        let mut input = input.split(' ').map(|x| x.trim());
 
-        let operand_1 = map_operand(operand_1_str);
-        let operand_2 = map_operand(operand_2_str);
+        let operand_1_str = input.next().unwrap();
+        let operator_str = input.next().unwrap();
+        let operand_2_str = input.next().unwrap();
 
-        if operand_1.is_err() || operand_2.is_err() {
-            return Err(nom::Err::Failure(nom::error::Error {
-                input,
-                code: nom::error::ErrorKind::Digit,
-            }));
-        }
+        let operand_1 = map_operand(operand_1_str).unwrap();
+        let operand_2 = map_operand(operand_2_str).unwrap();
 
-        let operand_1 = operand_1.unwrap();
-        let operand_2 = operand_2.unwrap();
-
-        let operator = match operator_str {
+        let operator = match operator_str.chars().next().unwrap() {
             '+' => u64::checked_add,
-            '-' => panic!(),
             '*' => u64::checked_mul,
             _ => panic!(),
         };
@@ -95,50 +77,42 @@ mod parser {
             (Operand::Number(n1), Operand::Number(n2)) => Box::new(move |_| operator(n1, n2)),
         };
 
-        Ok((input, operation))
+        operation
     }
 
-    fn parse_test(input: &str) -> IResult<&str, (u64, usize, usize)> {
-        let (input, divisor) = preceded(tag("divisible by "), complete::u64)(input)?;
-        let (input, _) = newline(input)?;
-        let (input, _) = take_until(": ")(input)?;
-        let (input, monkey_1) = preceded(tag(": throw to monkey "), complete::u8)(input)?;
-        let (input, _) = newline(input)?;
-        let (input, _) = take_until(": ")(input)?;
-        let (input, monkey_2) = preceded(tag(": throw to monkey "), complete::u8)(input)?;
-
-        Ok((input, (divisor, monkey_1.into(), monkey_2.into())))
+    fn get_last_number(input: &str) -> usize {
+        input.rsplit_once(' ').unwrap().1.parse().unwrap()
     }
 
-    fn parse_monkey(input: &str) -> IResult<&str, Monkey> {
-        let (input, _) = delimited(tag("Monkey "), complete::u64, tag(":"))(input)?;
-        let (input, _) = newline(input)?;
-        let (input, items) = preceded(
-            tuple((multispace1, tag("Starting items: "))),
-            separated_list0(tag(", "), complete::u64),
-        )(input)?;
-        let (input, _) = newline(input)?;
-        let (input, operation) =
-            preceded(tuple((multispace1, tag("Operation: "))), parse_operation)(input)?;
-        let (input, _) = newline(input)?;
-        let (input, (test_number, recipient_success, recipient_failed)) =
-            preceded(tuple((multispace1, tag("Test: "))), parse_test)(input)?;
+    fn parse_monkey(input: &str) -> Monkey {
+        let mut lines = input.lines();
+        lines.next(); // monkey line
+        let items = lines
+            .next()
+            .unwrap()
+            .split_once(": ")
+            .unwrap()
+            .1
+            .split(", ")
+            .map(|i| i.parse::<u64>().unwrap())
+            .collect::<Vec<_>>();
+        let operation =
+            parse_operation(lines.next().unwrap().strip_prefix("  Operation:").unwrap());
+        let test_number = get_last_number(lines.next().unwrap()) as u64;
+        let recipient_success = get_last_number(lines.next().unwrap());
+        let recipient_failed = get_last_number(lines.next().unwrap());
 
-        Ok((
-            input,
-            Monkey {
-                items: items.into(),
-                operation,
-                test_number,
-                recipient_success,
-                recipient_failed,
-            },
-        ))
+        Monkey {
+            items: items.into(),
+            operation,
+            test_number,
+            recipient_success,
+            recipient_failed,
+        }
     }
 
     pub fn parse_input(input: &str) -> Vec<Monkey> {
-        let (_, monkeys) = separated_list0(multispace1, parse_monkey)(input).unwrap();
-        monkeys
+        input.split("\n\n").map(|l| parse_monkey(l)).collect()
     }
 
     #[test]
@@ -150,7 +124,7 @@ mod parser {
     If true: throw to monkey 2
     If false: throw to monkey 0";
 
-        let (_, monkey) = parse_monkey(input).unwrap();
+        let monkey = parse_monkey(input);
 
         assert_eq!(monkey.items, vec![54, 65, 75, 74]);
         assert_eq!(monkey.test_number, 19);

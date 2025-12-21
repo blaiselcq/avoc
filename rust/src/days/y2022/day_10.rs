@@ -1,12 +1,5 @@
 use std::collections::BTreeMap;
 
-use nom::character::complete::{alpha1, newline};
-use nom::character::streaming::space1;
-use nom::error::{Error, ErrorKind};
-use nom::multi::separated_list0;
-use nom::sequence::tuple;
-use nom::IResult;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Instruction {
     Noop,
@@ -16,20 +9,6 @@ enum Instruction {
 struct Cpu {
     counter: usize,
     register_x: i32,
-}
-
-impl Instruction {
-    fn parser(input: &str) -> IResult<&str, Instruction> {
-        let (input, instruction) = alpha1(input)?;
-        match instruction {
-            "noop" => Ok((input, Instruction::Noop)),
-            "addx" => {
-                let (input, (_, x)) = tuple((space1, nom::character::complete::i32))(input)?;
-                Ok((input, Instruction::Addx(x)))
-            }
-            other => IResult::Err(nom::Err::Failure(Error::new(other, ErrorKind::Switch))),
-        }
-    }
 }
 
 impl Cpu {
@@ -57,8 +36,13 @@ impl Cpu {
 }
 
 fn parse_input(input: &str) -> Vec<Instruction> {
-    let (_, output) = separated_list0(newline, Instruction::parser)(input).unwrap();
-    output
+    input
+        .lines()
+        .map(|l| match l.split_once(' ') {
+            Some((_ins, arg)) => Instruction::Addx(arg.parse().unwrap()),
+            None => Instruction::Noop,
+        })
+        .collect()
 }
 
 fn complete_history(history: BTreeMap<usize, i32>) -> Vec<i32> {
