@@ -1,7 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use itertools::Itertools;
-
 use crate::utils::geometry::{point2, Point2, Vector2};
 
 type Point = Point2<i32>;
@@ -37,8 +35,13 @@ fn rock_intersects(rock_1: &Rock, position_1: Point, rock_2: &Rock, position_2: 
     rock_1
         .parts
         .iter()
-        .cartesian_product(rock_2.parts.iter())
-        .any(|(&lhs, &rhs)| (lhs + position_1) == (rhs + position_2))
+        .flat_map(|&r1| {
+            rock_2
+                .parts
+                .iter()
+                .map(move |&r2| (r1 + position_1) == (r2 + position_2))
+        })
+        .any(|r| r)
 }
 
 fn get_rock(number: u64) -> Rock {

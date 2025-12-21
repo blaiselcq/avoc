@@ -1,7 +1,5 @@
 use std::{collections::BTreeMap, ops::RangeInclusive};
 
-use itertools::Itertools;
-
 use crate::utils::geometry::Point2;
 
 type Point = Point2<i32>;
@@ -137,7 +135,7 @@ fn get_row(
 
 fn get_first_empty_position(subgrid_size: i32, map: &BTreeMap<Point, Sensor>) -> Option<Point> {
     for row_number in 0..=subgrid_size {
-        let ranges = map
+        let mut ranges = map
             .iter()
             .map(|(position, sensor)| {
                 let distance: i32 = position.y.abs_diff(row_number).try_into().unwrap();
@@ -146,7 +144,9 @@ fn get_first_empty_position(subgrid_size: i32, map: &BTreeMap<Point, Sensor>) ->
 
                 (start.max(0), end)
             })
-            .sorted_by_key(|x| x.0);
+            .collect::<Vec<_>>();
+
+        ranges.sort_by_key(|x| x.0);
 
         let mut covered_until = -1;
         for range in ranges {

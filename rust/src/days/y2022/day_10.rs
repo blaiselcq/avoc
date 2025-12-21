@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use itertools::Itertools;
 use nom::character::complete::{alpha1, newline};
 use nom::character::streaming::space1;
 use nom::error::{Error, ErrorKind};
@@ -106,21 +105,15 @@ fn get_signal_strengths(start: usize, increment: usize, history: BTreeMap<usize,
 }
 
 fn get_drawing(length: usize, history: BTreeMap<usize, i32>) -> Vec<Vec<bool>> {
-    let mut output = vec![];
-    let history = complete_history(history);
-    history
+    let history = complete_history(history)
         .iter()
         .enumerate()
+        .map(|(i, v)| (*v - (i % length) as i32).abs() < 2)
+        .collect::<Vec<_>>();
+    history
         .chunks(length)
-        .into_iter()
-        .for_each(|range| {
-            let row = range
-                .map(|(i, v)| (*v - (i % length) as i32).abs() < 2)
-                .collect();
-            output.push(row);
-        });
-
-    output
+        .map(|c| c.iter().cloned().collect())
+        .collect()
 }
 
 fn format_drawing(drawing: Vec<Vec<bool>>) -> String {
@@ -129,7 +122,7 @@ fn format_drawing(drawing: Vec<Vec<bool>>) -> String {
         let mut out = String::new();
         line.iter().for_each(|c| match c {
             true => out.push('#'),
-            false => out.push('.'),
+            false => out.push(' '),
         });
         output.push('\n');
         output.push_str(&out);

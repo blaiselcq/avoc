@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 fn load_input(input: &str) -> Vec<Vec<u32>> {
     input
         .lines()
@@ -9,24 +7,19 @@ fn load_input(input: &str) -> Vec<Vec<u32>> {
 }
 
 fn largest_joltage(bank: &[u32], batteries: usize) -> u64 {
-    let mut digits = vec![];
-
+    let mut res = 0u64;
     let mut start_pos = 0;
     for i in (0..batteries).rev() {
-        let digit = bank[start_pos..bank.len() - i].iter().max().unwrap();
+        let digit = *(bank[start_pos..bank.len() - i].iter().max().unwrap());
         let pos_digit = bank[start_pos..bank.len() - i]
             .iter()
-            .position(|d| d == digit)
+            .position(|&d| d == digit)
             .unwrap();
-        digits.push(digit);
+        res = 10 * res + digit as u64;
         start_pos += pos_digit + 1;
     }
-    digits
-        .iter()
-        .map(|c| c.to_string())
-        .join("")
-        .parse()
-        .unwrap()
+
+    res
 }
 
 pub fn puzzle_1(input: &str) -> String {

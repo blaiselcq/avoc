@@ -1,22 +1,26 @@
 use core::str;
 
-use itertools::Itertools;
-
 fn parse_input(input: &str) -> (u16, Vec<u16>) {
-    let split = input.split('\n').filter(|l| !l.is_empty()).collect_vec();
+    let len = input.split_once('\n').unwrap().0.len() as u16;
+    let numbers = input
+        .split('\n')
+        .filter(|l| !l.is_empty())
+        .map(|l| u16::from_str_radix(l, 2).unwrap())
+        .collect();
 
-    (
-        split.first().unwrap().len() as u16,
-        split
-            .iter()
-            .map(|l| u16::from_str_radix(l, 2).unwrap())
-            .collect(),
-    )
+    (len, numbers)
 }
 
-fn get_most_common_nth_bit(bits: &Vec<u16>, k: u16) -> u16 {
-    let counts = bits.iter().map(|&n| (n & (1 << k)) >> k).counts();
-    if counts.get(&0).unwrap_or(&0) > counts.get(&1).unwrap_or(&1) {
+fn get_most_common_nth_bit(bits: &[u16], k: u16) -> u16 {
+    let counts = bits
+        .iter()
+        .map(|&n| (n & (1 << k)) >> k)
+        .fold((0, 0), |acc, b| match b {
+            0 => (acc.0 + 1, acc.1),
+            1 => (acc.0, acc.1 + 1),
+            _ => unreachable!(),
+        });
+    if counts.0 > counts.1 {
         0
     } else {
         1
@@ -36,7 +40,7 @@ fn filter_on_most_common_nth_bit(bits: &Vec<u16>, k: u16) -> Vec<u16> {
     bits.iter()
         .filter(|&n| (n & (1 << k)) >> k == mcnb)
         .map(|&n| n)
-        .collect_vec()
+        .collect()
 }
 
 fn filter_on_least_common_nth_bit(bits: &Vec<u16>, k: u16) -> Vec<u16> {
@@ -48,7 +52,7 @@ fn filter_on_least_common_nth_bit(bits: &Vec<u16>, k: u16) -> Vec<u16> {
     bits.iter()
         .filter(|&n| (n & (1 << k)) >> k == lcnb)
         .map(|&n| n)
-        .collect_vec()
+        .collect()
 }
 
 pub fn puzzle_1(input: &str) -> String {

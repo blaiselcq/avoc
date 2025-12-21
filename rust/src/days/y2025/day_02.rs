@@ -1,5 +1,3 @@
-use itertools::Itertools;
-
 fn load_input(input: &str) -> Vec<(i64, i64)> {
     input
         .trim()
@@ -16,8 +14,7 @@ fn is_valid_n(number: i64) -> bool {
         if number.len() % i != 0 {
             continue;
         }
-
-        if number.chunks(i).all_equal() {
+        if number.chunks(i).all(|c| c == &number[..i]) {
             return false;
         }
     }
